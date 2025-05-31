@@ -1,0 +1,110 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Personal Issue Tracking System</title>
+    <link rel="stylesheet" href="../styles/index.css">
+    <script src="../js/index.js"></script>
+</head>
+<body>
+    <h1>Welcome User1</h1>
+    <div class="container">
+        <div class="issue-list">
+            <h2>Issues</h2>
+            <ul id="issueList">
+                <!-- Issues will be dynamically loaded here -->
+            </ul>
+        </div>
+        <div class="issue-form">
+            <h2>Add New Issue</h2>
+            <form id="issueForm">
+                <label for="issueTitle">Title:</label>
+                <input type="text" id="issueTitle" name="issueTitle" required>
+                <label for="issueType">Type:</label>
+                <select id="issueType" name="issueType" required>
+                    <option value="Daily">Daily</option>
+                    <option value="Schedule">Schedule</option>
+                </select>
+                <label for="issueDescription">Description:</label>
+                <textarea id="issueDescription" name="issueDescription"></textarea>
+                <label for="status">Description:</label>
+                <select id="status" name="status" required>
+                    <option value="TODO">TO-DO</option>
+                    <option value="InProgress">In progress</option>
+                    <option value="Finished">Finished</option>
+                </select>
+                <label for="deadline">Deadline:</label>
+                <input type="date" id="deadline" name="deadline">
+                <button type="submit">Add Issue</button>
+            </form>
+            <div id="formMessage"></div>
+        </div>
+    </div>
+    </body>
+</html>
+
+<script>
+    const loadIssues = () => {
+        fetch('/get/all')
+            .then(response => response.json())
+            .then(issues => {
+                const issueList = document.getElementById('issueList');
+                issueList.innerHTML = ''; // Clear existing issues
+                issues.forEach(issue => {
+                    const li = document.createElement('li');
+                    li.textContent = `${issue.id} - ${issue.title} - ${issue.type} - ${issue.status}`;
+                    issueList.appendChild(li);
+                    const button = document.createElement('button');
+                    button.textContent = 'Delete';
+                    button.addEventListener('click', ()=> deleteIssue(issue.id));
+                    issueList.appendChild(button);
+                });
+            })
+            .catch(error => console.error('Error loading issues:', error));
+    };
+
+    loadIssues();
+
+    const createIssue = async (e) => {
+        e.preventDefault(); // Prevent the form from submitting normally
+
+        const title = document.getElementById('issueTitle').value;
+        const type = document.getElementById('issueType').value;
+        const description = document.getElementById('issueDescription').value;
+        const status = document.getElementById('status').value;
+        const deadline = document.getElementById('deadline').value;
+
+        if(type === 'Schedule' && deadline=== '') {
+            window.alert('Please select a deadline for Schedule type issues.');
+            return;
+        }
+
+        const newIssue = {
+            title: title,
+            type: type,
+            description: description,
+            status: status,
+            deadline: deadline
+        };
+
+        await fetch('submit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newIssue)
+        })
+        loadIssues();
+    }
+
+    const deleteIssue = async (issueId) => {
+        await fetch(`/delete/${issueId}`, {
+            method: 'DELETE'
+        });
+        loadIssues();
+    };
+
+
+
+    const form = document.getElementById('issueForm');
+    form.addEventListener('submit', createIssue);
+</script>
