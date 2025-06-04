@@ -1,6 +1,9 @@
 package org.fcu.ooseproject.controller;
 
 import org.fcu.ooseproject.*;
+import org.fcu.ooseproject.service.Issue;
+import org.fcu.ooseproject.service.type.IssueType;
+import org.fcu.ooseproject.service.type.StatusType;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;

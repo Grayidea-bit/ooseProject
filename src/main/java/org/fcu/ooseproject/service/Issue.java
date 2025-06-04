@@ -1,9 +1,10 @@
-package org.fcu.ooseproject;
+package org.fcu.ooseproject.service;
 
 import jakarta.persistence.*;
 import java.util.Date;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.fcu.ooseproject.service.type.IssueType;
+import org.fcu.ooseproject.service.type.StatusType;
 
 @Entity
 @Table(name = "issues")
@@ -103,7 +104,5 @@ public class Issue {
     }
 }
 
-interface IssueRepository extends JpaRepository<Issue, Long> {
 
-}
 

@@ -3,6 +3,10 @@ package org.fcu.ooseproject;
 import java.util.Calendar;
 import java.util.Date;
 
+import org.fcu.ooseproject.repository.IssueRepository;
+import org.fcu.ooseproject.service.Issue;
+import org.fcu.ooseproject.service.type.IssueType;
+import org.fcu.ooseproject.service.type.StatusType;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
