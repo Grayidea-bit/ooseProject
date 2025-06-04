@@ -1,19 +1,33 @@
 package org.fcu.ooseproject;
 
+import jakarta.persistence.*;
 import java.util.Date;
 
+import org.springframework.data.jpa.repository.JpaRepository;
+
+@Entity
+@Table(name = "issues")
 public class Issue {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String title;
+
+    @Enumerated(EnumType.STRING)
     private IssueType type;
     private String description;
+
+    @Enumerated(EnumType.STRING)
     private StatusType status;
     private Date deadline = null;
-    private Date createdAt;
+    private Date createdAt = new Date();
 
-    public Issue() {}
+    public Issue() {
+    }
 
-    public Issue(String title, String description,IssueType type, StatusType status) {
+    public Issue(String title, String description, IssueType type, StatusType status) {
         this.title = title;
         this.type = type;
         this.description = description;
@@ -21,7 +35,7 @@ public class Issue {
         this.deadline = null;
     }
 
-    public Issue(String title, String description,IssueType type, StatusType status, Date deadline) {
+    public Issue(String title, String description, IssueType type, StatusType status, Date deadline) {
         this.title = title;
         this.type = type;
         this.description = description;
@@ -29,7 +43,8 @@ public class Issue {
         this.deadline = deadline;
     }
 
-    public Issue(Long id, String title, String description,IssueType type, StatusType status, Date deadline, Date createdAt) {
+    public Issue(Long id, String title, String description, IssueType type, StatusType status, Date deadline,
+            Date createdAt) {
         this.id = id;
         this.title = title;
         this.type = type;
@@ -82,7 +97,13 @@ public class Issue {
     public Date getDeadline() {
         return deadline;
     }
+
     public void setDeadline(Date deadline) {
         this.deadline = deadline;
     }
 }
+
+interface IssueRepository extends JpaRepository<Issue, Long> {
+
+}
+
