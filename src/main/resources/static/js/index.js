@@ -6,17 +6,35 @@ class IssueTracker {
     init() {
         this.bindEvents();
         this.loadIssues();
+        window.issueTracker = this;
     }
 
     bindEvents() {
         const form = document.getElementById('issueForm');
         form.addEventListener('submit', (e) => this.createIssue(e));
+
+        // Add event delegation for edit/save/cancel buttons
+        this.handleIssueActions();
+    }
+
+    // Event delegation for issue actions
+    handleIssueActions() {
+            document.addEventListener('click', (e) => {
+                const issueId = e.target.dataset.issueId;
+
+                if (e.target.classList.contains('edit-btn')) {
+                    this.enterEditMode(issueId);
+                } else if (e.target.classList.contains('delete-btn')) {
+                    this.deleteIssue(issueId);
+                }
+            });
     }
 
     async loadIssues() {
         try {
             const response = await fetch('/get/all');
             const issues = await response.json();
+            this.issues = issues;
             this.renderIssues(issues);
             this.updateIssueCount(issues.length);
         } catch (error) {
@@ -34,17 +52,13 @@ class IssueTracker {
         }
 
         issueList.innerHTML = issues.map(issue => this.createIssueHTML(issue)).join('');
-
-        // Bind delete events
-        issues.forEach(issue => {
-            const deleteBtn = document.querySelector(`[data-issue-id="${issue.id}"]`);
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', () => this.deleteIssue(issue.id));
-            }
-        });
     }
 
-    createIssueHTML(issue) {
+    createIssueHTML(issue, isEditing = false) {
+        if (isEditing) {
+            return this.createEditingHTML(issue);
+        }
+
         const formattedDeadline = issue.deadline ?
             new Date(issue.deadline).toLocaleDateString('en-US', {
                 year: 'numeric',
@@ -53,28 +67,172 @@ class IssueTracker {
             }) : 'No deadline';
 
         return `
-            <div class="issue-item">
+            <div class="issue-item" data-issue-id="${issue.id}">
                 <div class="issue-header">
                     <div>
                         <div class="issue-title">${this.escapeHtml(issue.title)}</div>
                         <div class="issue-id">#${issue.id}</div>
                     </div>
                 </div>
-                
+
                 <div class="issue-meta">
                     <span class="issue-type ${issue.type.toLowerCase()}">${issue.type}</span>
                     <span class="issue-status ${issue.status.toLowerCase()}">${this.formatStatus(issue.status)}</span>
                 </div>
-                
+
                 ${issue.description ? `<div class="issue-description">${this.escapeHtml(issue.description)}</div>` : ''}
-                
+
                 <div class="issue-deadline">📅 ${formattedDeadline}</div>
-                
-                <button class="delete-btn" data-issue-id="${issue.id}">
-                    🗑️ Delete
-                </button>
+
+                <div class="issue-actions">
+                    <button class="edit-btn" data-issue-id="${issue.id}">
+                        ✏️ Edit
+                    </button>
+                    <button class="delete-btn" data-issue-id="${issue.id}">
+                        🗑️ Delete
+                    </button>
+                </div>
             </div>
         `;
+    }
+
+    showEditModal(issue) {
+            const deadlineValue = issue.deadline ?
+                new Date(issue.deadline).toISOString().split('T')[0] : '';
+
+            const modalHTML = `
+                <div class="modal-overlay" id="editModal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Edit Issue #${issue.id}</h3>
+                            <button class="modal-close" onclick="issueTracker.closeEditModal()">&times;</button>
+                        </div>
+
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="editTitle">Title *</label>
+                                <input type="text" id="editTitle" value="${this.escapeHtml(issue.title)}" placeholder="Issue title">
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="editType">Type</label>
+                                    <select id="editType">
+                                        <option value="Daily" ${issue.type === 'Daily' ? 'selected' : ''}>Daily</option>
+                                        <option value="Schedule" ${issue.type === 'Schedule' ? 'selected' : ''}>Schedule</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="editStatus">Status</label>
+                                    <select id="editStatus">
+                                        <option value="TODO" ${issue.status === 'TODO' ? 'selected' : ''}>To-Do</option>
+                                        <option value="InProgress" ${issue.status === 'InProgress' ? 'selected' : ''}>In Progress</option>
+                                        <option value="Finished" ${issue.status === 'Finished' ? 'selected' : ''}>Finished</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="editDescription">Description</label>
+                                <textarea id="editDescription" placeholder="Issue description" rows="4">${this.escapeHtml(issue.description || '')}</textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="editDeadline">Deadline</label>
+                                <input type="date" id="editDeadline" value="${deadlineValue}">
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button class="btn btn-primary" onclick="issueTracker.saveIssueFromModal(${issue.id})">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+            // Add event listener for ESC key
+            document.addEventListener('keydown', this.handleModalEscape.bind(this));
+
+            // Focus on title input
+            setTimeout(() => {
+                document.getElementById('editTitle').focus();
+            }, 100);
+    }
+
+    enterEditMode(issueId) {
+            const issue = this.findIssueById(issueId);
+            if (issue) {
+                this.showEditModal(issue);
+            }
+        }
+
+    // Close edit modal
+    closeEditModal() {
+        const modal = document.getElementById('editModal');
+        if (modal) {
+            modal.remove();
+        }
+        document.removeEventListener('keydown', this.handleModalEscape.bind(this));
+    }
+
+    // Handle ESC key to close modal
+    handleModalEscape(e) {
+        if (e.key === 'Escape') {
+            this.closeEditModal();
+        }
+    }
+
+    // Save issue from modal
+    async saveIssueFromModal(issueId) {
+        const updatedData = {
+            title: document.getElementById('editTitle').value.trim(),
+            type: document.getElementById('editType').value,
+            status: document.getElementById('editStatus').value,
+            description: document.getElementById('editDescription').value.trim(),
+            deadline: document.getElementById('editDeadline').value || null
+        };
+
+        // Validate required fields
+        if (!updatedData.title) {
+            this.showMessage('Please enter a title', 'error');
+            return;
+        }
+
+        if (updatedData.type === 'Schedule' && !updatedData.deadline) {
+            this.showMessage('Please select a deadline for Schedule type issues', 'error');
+            return;
+        }
+
+        try {
+            const issueId2Int = Number(issueId);
+            const response = await fetch(`/edit/${issueId2Int}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedData)
+            });
+
+            if (response.ok) {
+                this.closeEditModal();
+                this.showMessage('Issue updated successfully!', 'success');
+                await this.loadIssues(); // Reload to get updated data
+            } else {
+                throw new Error('Failed to update issue');
+            }
+        } catch (error) {
+            console.error('Error updating issue:', error);
+            this.showMessage('Failed to update issue', 'error');
+        }
+    }
+
+    // Find issue by ID
+    findIssueById(id) {
+        return this.issues.find(issue => issue.id === parseInt(id));
     }
 
     getEmptyState() {

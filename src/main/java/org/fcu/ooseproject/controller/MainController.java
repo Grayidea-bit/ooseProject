@@ -7,12 +7,8 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-
-import java.io.InputStream;
-import java.sql.Timestamp;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
 
 @RestController
 public class MainController {
@@ -81,14 +77,16 @@ public class MainController {
     }
 
     @PutMapping("/edit/{issueId}")
-    public void editIssue(@PathVariable Integer issueId, @RequestParam Issue issue) {
-        String sql = "UPDATE issues SET title = :title, type = :type, description = :description, status = :status WHERE id = :id";
+    public void editIssue(@PathVariable Integer issueId, @RequestBody Issue issue) {
+
+        String sql = "UPDATE issues SET title = :title, type = :type, description = :description, status = :status , deadline = :deadline WHERE id = :id";
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("id", issueId);
         params.addValue("title", issue.getTitle());
-        params.addValue("type", issue.getType());
+        params.addValue("type", issue.getType().toString());
         params.addValue("description", issue.getDescription());
-        params.addValue("status", issue.getStatus());
+        params.addValue("status", issue.getStatus().toString());
+        params.addValue("deadline", issue.getDeadline());
 
         namedParameterJdbcTemplate.update(sql, params);
     }
