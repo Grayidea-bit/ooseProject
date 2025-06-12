@@ -1,0 +1,22 @@
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+
+folder "src" {
+    folder "main" {
+        folder "resources" {
+            folder "templates" {
+                component "index.html"
+            }
+            folder "static" {
+                component "static files"
+            }
+        }
+    }
+}
+
+note right of "index.html"
+  Located in templates directory
+end note
+
+@enduml 

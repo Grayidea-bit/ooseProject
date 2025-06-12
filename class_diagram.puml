@@ -1,0 +1,89 @@
+@startuml
+
+skinparam component {
+    BackgroundColor<<folder>> LightBlue
+    BackgroundColor<<file>> LightYellow
+    BorderColor<<folder>> DarkBlue
+    BorderColor<<file>> DarkGoldenrod
+}
+
+title Issue Management System - MVC Architecture
+
+package "View" {
+    package "templates" {
+        class "index.html" <<file>>
+    }
+    package "static" {
+        package "css" {
+            class "index.css" <<file>>
+        }
+        package "js" {
+            class "index.js" <<file>>
+        }
+    }
+}
+
+package "Controller" {
+    class MainController {
+        - issueService: IssueService
+        + index(): ModelAndView
+        + submit(issue: Issue): void
+        + getIssuesWithSortFilter()
+        + getIssue(issueId: Long): Issue
+        + editIssue(issueId: Long, issue: Issue): void
+        + deleteIssue(issueId: Long): void
+    }
+}
+
+package "Model" {
+    enum IssueType {
+        DAILY
+        SCHEDULE
+    }
+
+    enum StatusType {
+        TODO
+        INPROGRESS
+        FINISHED
+    }
+
+    class Issue {
+        - id: Long
+        - title: String
+        - description: String
+        - type: IssueType
+        - status: StatusType
+        - deadline: Date
+        - createdAt: Date
+    }
+
+    interface IssueRepository {
+        + findAll(): List<Issue>
+        + findById(id: Long): Optional<Issue>
+        + save(issue: Issue): Issue
+        + deleteById(id: Long): void
+    }
+
+    class IssueService {
+        - issueRepository: IssueRepository
+        + getAllIssues()
+        + getAllIssuesWithSortFilter()
+        + getIssueById()
+        + createIssue()
+        + updateIssue()
+        + deleteIssue()
+    }
+}
+
+' MVC Flow
+MainController ..o IssueService: update data
+IssueService ..o IssueRepository
+IssueRepository -> Issue
+Issue --> IssueType
+Issue --> StatusType
+
+Model ..> View: update view
+Controller ..> View: update view
+Controller <.. View: request
+
+@enduml

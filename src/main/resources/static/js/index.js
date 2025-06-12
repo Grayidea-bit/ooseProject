@@ -1,12 +1,26 @@
 class IssueTracker {
     constructor() {
+        this.issues = [];
         this.init();
     }
 
     init() {
+        this.loadIssuesFromDOM();
         this.bindEvents();
-        this.loadIssues();
         window.issueTracker = this;
+    }
+
+    loadIssuesFromDOM() {
+        // 從 DOM 中獲取所有 issue 元素
+        const issueElements = document.querySelectorAll('.issue-item');
+        this.issues = Array.from(issueElements).map(element => ({
+            id: parseInt(element.dataset.issueId),
+            title: element.querySelector('.issue-title').textContent,
+            type: element.querySelector('.issue-type').textContent,
+            status: element.querySelector('.issue-status').textContent,
+            description: element.querySelector('.issue-description')?.textContent || '',
+            deadline: element.querySelector('.issue-deadline span')?.textContent || null
+        }));
     }
 
     bindEvents() {
@@ -19,81 +33,15 @@ class IssueTracker {
 
     // Event delegation for issue actions
     handleIssueActions() {
-            document.addEventListener('click', (e) => {
-                const issueId = e.target.dataset.issueId;
+        document.addEventListener('click', (e) => {
+            const issueId = e.target.dataset.issueId;
 
-                if (e.target.classList.contains('edit-btn')) {
-                    this.enterEditMode(issueId);
-                } else if (e.target.classList.contains('delete-btn')) {
-                    this.deleteIssue(issueId);
-                }
-            });
-    }
-
-    async loadIssues() {
-        try {
-            const response = await fetch('/get/all');
-            const issues = await response.json();
-            this.issues = issues;
-            this.renderIssues(issues);
-            this.updateIssueCount(issues.length);
-        } catch (error) {
-            console.error('Error loading issues:', error);
-            this.showMessage('Failed to load issues', 'error');
-        }
-    }
-
-    renderIssues(issues) {
-        const issueList = document.getElementById('issueList');
-
-        if (issues.length === 0) {
-            issueList.innerHTML = this.getEmptyState();
-            return;
-        }
-
-        issueList.innerHTML = issues.map(issue => this.createIssueHTML(issue)).join('');
-    }
-
-    createIssueHTML(issue, isEditing = false) {
-        if (isEditing) {
-            return this.createEditingHTML(issue);
-        }
-
-        const formattedDeadline = issue.deadline ?
-            new Date(issue.deadline).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            }) : 'No deadline';
-
-        return `
-            <div class="issue-item" data-issue-id="${issue.id}">
-                <div class="issue-header">
-                    <div>
-                        <div class="issue-title">${this.escapeHtml(issue.title)}</div>
-                        <div class="issue-id">#${issue.id}</div>
-                    </div>
-                </div>
-
-                <div class="issue-meta">
-                    <span class="issue-type ${issue.type.toLowerCase()}">${issue.type}</span>
-                    <span class="issue-status ${issue.status.toLowerCase()}">${this.formatStatus(issue.status)}</span>
-                </div>
-
-                ${issue.description ? `<div class="issue-description">${this.escapeHtml(issue.description)}</div>` : ''}
-
-                <div class="issue-deadline">📅 ${formattedDeadline}</div>
-
-                <div class="issue-actions">
-                    <button class="edit-btn" data-issue-id="${issue.id}">
-                        ✏️ Edit
-                    </button>
-                    <button class="delete-btn" data-issue-id="${issue.id}">
-                        🗑️ Delete
-                    </button>
-                </div>
-            </div>
-        `;
+            if (e.target.classList.contains('edit-btn')) {
+                this.enterEditMode(issueId);
+            } else if (e.target.classList.contains('delete-btn')) {
+                this.deleteIssue(issueId);
+            }
+        });
     }
 
     showEditModal(issue) {
@@ -164,7 +112,8 @@ class IssueTracker {
     }
 
     enterEditMode(issueId) {
-            const issue = this.findIssueById(issueId);
+        const issue = this.findIssueById(issueId);
+        console.log(issue, issueId);
             if (issue) {
                 this.showEditModal(issue);
             }
@@ -220,7 +169,7 @@ class IssueTracker {
             if (response.ok) {
                 this.closeEditModal();
                 this.showMessage('Issue updated successfully!', 'success');
-                await this.loadIssues(); // Reload to get updated data
+                window.location.reload();
             } else {
                 throw new Error('Failed to update issue');
             }
@@ -232,6 +181,7 @@ class IssueTracker {
 
     // Find issue by ID
     findIssueById(id) {
+        console.log(this.issues, id);
         return this.issues.find(issue => issue.id === parseInt(id));
     }
 
@@ -285,7 +235,7 @@ class IssueTracker {
             if (response.ok) {
                 this.resetForm();
                 this.showMessage('Issue created successfully!', 'success');
-                await this.loadIssues();
+                window.location.reload();
             } else {
                 throw new Error('Failed to create issue');
             }
@@ -335,7 +285,7 @@ class IssueTracker {
 
             if (response.ok) {
                 this.showMessage('Issue deleted successfully!', 'success');
-                await this.loadIssues();
+                window.location.reload();
             } else {
                 throw new Error('Failed to delete issue');
             }

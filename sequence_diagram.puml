@@ -1,0 +1,68 @@
+@startuml
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor User
+participant "Frontend\n(IssueTracker)" as Frontend
+participant "MainController" as Controller
+participant "Database" as DB
+
+== Issue Creation ==
+User -> Frontend: Submit Issue Form
+activate Frontend
+Frontend -> Frontend: Validate Form Data
+Frontend -> Controller: POST /submit
+activate Controller
+Controller -> DB: Insert Issue
+DB --> Controller: Success
+Controller --> Frontend: Response
+deactivate Controller
+Frontend -> Frontend: Reset Form
+Frontend -> Frontend: Show Success Message
+Frontend -> Frontend: Reload Issues
+deactivate Frontend
+
+== Issue Loading ==
+User -> Frontend: Load Page
+activate Frontend
+Frontend -> Controller: GET /get/all
+activate Controller
+Controller -> DB: Query All Issues
+DB --> Controller: Return Issues
+Controller --> Frontend: Return Issues List
+deactivate Controller
+Frontend -> Frontend: Render Issues
+deactivate Frontend
+
+== Issue Update ==
+User -> Frontend: Click Edit Button
+activate Frontend
+Frontend -> Frontend: Show Edit Modal
+User -> Frontend: Update Issue Data
+Frontend -> Frontend: Validate Form Data
+Frontend -> Controller: PUT /edit/{issueId}
+activate Controller
+Controller -> DB: Update Issue
+DB --> Controller: Success
+Controller --> Frontend: Response
+deactivate Controller
+Frontend -> Frontend: Close Modal
+Frontend -> Frontend: Show Success Message
+Frontend -> Frontend: Reload Issues
+deactivate Frontend
+
+== Issue Deletion ==
+User -> Frontend: Click Delete Button
+activate Frontend
+Frontend -> Controller: DELETE /delete/{issueId}
+activate Controller
+Controller -> DB: Delete Issue
+DB --> Controller: Success
+Controller --> Frontend: Response
+deactivate Controller
+Frontend -> Frontend: Show Success Message
+Frontend -> Frontend: Reload Issues
+deactivate Frontend
+
+@enduml 

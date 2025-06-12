@@ -1,28 +1,40 @@
-package org.fcu.ooseproject.service;
+package org.fcu.ooseproject.entity;
 
 import jakarta.persistence.*;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Date;
+import java.time.LocalDate;
 
-import org.fcu.ooseproject.service.type.IssueType;
-import org.fcu.ooseproject.service.type.StatusType;
+import org.fcu.ooseproject.entity.type.IssueType;
+import org.fcu.ooseproject.entity.type.StatusType;
 
 @Entity
 @Table(name = "issues")
+@Schema(description = "Issue Entity - Represents a task or schedule item")
 public class Issue {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Schema(description = "Unique identifier of the issue", example = "1")
     private Long id;
 
+    @Schema(description = "Title of the issue", example = "Complete project documentation")
     private String title;
 
-    @Enumerated(EnumType.STRING)
-    private IssueType type;
+    @Schema(description = "Detailed description of the issue", example = "Write comprehensive documentation for the project including API endpoints and database schema")
     private String description;
 
+    @Schema(description = "Type of the issue (Daily or Schedule)", example = "Daily")
+    @Enumerated(EnumType.STRING)
+    private IssueType type;
+
+    @Schema(description = "Current status of the issue (TODO, InProgress, or Finished)", example = "TODO")
     @Enumerated(EnumType.STRING)
     private StatusType status;
-    private Date deadline = null;
+
+    @Schema(description = "Deadline for the issue", example = "2024-12-31")
+    private Date deadline;
+
     private Date createdAt = new Date();
 
     public Issue() {

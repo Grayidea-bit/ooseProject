@@ -1,103 +1,123 @@
 package org.fcu.ooseproject.controller;
 
-import org.fcu.ooseproject.*;
-import org.fcu.ooseproject.service.Issue;
-import org.fcu.ooseproject.service.type.IssueType;
-import org.fcu.ooseproject.service.type.StatusType;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.fcu.ooseproject.entity.Issue;
+import org.fcu.ooseproject.service.IssueService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.media.Content;     
+import io.swagger.v3.oas.annotations.media.Schema;
 
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import java.time.LocalDate;
 import java.util.List;
 
-
 @RestController
+@Tag(name = "Issue Management", description = "APIs for managing issues and tasks")
 public class MainController {
 
     @Autowired
-    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private IssueService issueService;
 
+    @Operation(summary = "View home page", description = "Returns the main page with all issues")
+    @ApiResponse(responseCode = "200", description = "Successfully retrieved the home page")
     @GetMapping("/")
+    @ResponseBody
     public ModelAndView index() {
-        return new ModelAndView("index");
+        List<Issue> issues = issueService.getAllIssues(Sort.by(Sort.Direction.ASC, "id"));
+        ModelAndView modelAndView = new ModelAndView("index");
+        modelAndView.addObject("issues", issues);
+        return modelAndView;
     }
 
+    @Operation(summary = "Create new issue", description = "Creates a new issue with the provided details")
+    @ApiResponse(responseCode = "200", description = "Issue created successfully")
     @PostMapping("/submit")
+    @ResponseBody
     public void submit(@RequestBody Issue issue) {
-        String sql = "INSERT INTO issues (title, type, description, status, deadline) VALUES (:title, :type, :description, :status, :deadline)";
-
-        MapSqlParameterSource params = new MapSqlParameterSource();
-        params.addValue("title", issue.getTitle());
-        params.addValue("description", issue.getDescription());
-        params.addValue("type", issue.getType().toString());
-        params.addValue("status", issue.getStatus().toString());
-
-        if (issue.getType().equals(IssueType.Schedule)) {
-            params.addValue("deadline", issue.getDeadline());
-        }
-        else {
-            params.addValue("deadline", null);
-        }
-
-        namedParameterJdbcTemplate.update(sql, params);
+        issueService.createIssue(issue);
     }
 
-
-
-    @GetMapping("/get/all")
-    public List<Issue> getAllIssues() {
-        String sql = "SELECT id, title, description, type, status, deadline, created_at FROM issues ORDER BY created_at DESC";
-
-        return namedParameterJdbcTemplate.query(sql, new MapSqlParameterSource(), (rs, rowNum) -> {
-            Issue issue = new Issue(
-                    rs.getLong("id"),
-                    rs.getString("title"),
-                    rs.getString("description"),
-                    IssueType.valueOf(rs.getString("type")),
-                    StatusType.valueOf(rs.getString("status")),
-                    rs.getDate("deadline"),
-                    rs.getTimestamp("created_at")
-            );
-            return issue;
-        });
+    @Operation(
+        summary = "Get filtered and sorted issues", 
+        description = "Retrieves issues with optional filtering and sorting parameters. Returns both JSON data and HTML view based on Accept header."
+    )
+    @ApiResponse(
+        responseCode = "200", 
+        description = "Successfully retrieved filtered issues",
+        content = {
+            @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = Issue.class, type = "array")
+            ),
+            @Content(
+                mediaType = "text/html",
+                schema = @Schema(implementation = String.class)
+            )
+        }
+    )
+    @GetMapping(
+        value = "/api/getAll",
+        produces = {"application/json", "text/html"}
+    )
+    @ResponseBody
+    public ModelAndView getIssuesWithSortFilter(
+        @Parameter(description = "Sort parameter (e.g., 'id,desc', 'type,asc')")
+        Sort sort,
+        
+        @Parameter(description = "Filter by issue type (e.g., 'Daily', 'Schedule' or multiple: 'Daily,Schedule')")
+        @RequestParam(value = "type", required = false) String type,
+        
+        @Parameter(description = "Filter by status (e.g., 'TODO', 'InProgress', 'Finished' or multiple)")
+        @RequestParam(value = "status", required = false) String status,
+        
+        @Parameter(description = "Search by keyword in title or description")
+        @RequestParam(value = "keyword", required = false) String keyword,
+        
+        @Parameter(description = "Filter by deadline before date (format: YYYY-MM-DD)")
+        @RequestParam(value = "before", required = false) LocalDate before
+    ) {
+        List<Issue> issues = issueService.getAllIssuesWithSortFilter(sort, type, status, keyword, before);
+        ModelAndView modelAndView = new ModelAndView("index");
+        modelAndView.addObject("issues", issues);
+        return modelAndView;
     }
 
-
+    @Operation(summary = "Get issue by ID", description = "Retrieves a specific issue by its ID")
+    @ApiResponse(responseCode = "200", description = "Successfully retrieved the issue")
     @GetMapping("/getById/{issueId}")
-    public Issue getIssue(@PathVariable Integer issueId) {
-        String sql = "SELECT * FROM issues WHERE id = :id";
-        MapSqlParameterSource params = new MapSqlParameterSource("id", issueId);
-
-        return namedParameterJdbcTemplate.queryForObject(sql, params, (rs, rowNum) -> new Issue(
-                rs.getString("title"),
-                rs.getString("description"),
-                IssueType.valueOf(rs.getString("type")),
-                StatusType.valueOf(rs.getString("status")),
-                rs.getDate("deadline") != null ? rs.getDate("deadline") : null
-        ));
+    @ResponseBody
+    public Issue getIssue(
+        @Parameter(description = "ID of the issue to retrieve")
+        @PathVariable Long issueId
+    ) {
+        return issueService.getIssueById(issueId);
     }
 
+    @Operation(summary = "Update issue", description = "Updates an existing issue with new details")
+    @ApiResponse(responseCode = "200", description = "Issue updated successfully")
     @PutMapping("/edit/{issueId}")
-    public void editIssue(@PathVariable Integer issueId, @RequestBody Issue issue) {
-
-        String sql = "UPDATE issues SET title = :title, type = :type, description = :description, status = :status , deadline = :deadline WHERE id = :id";
-        MapSqlParameterSource params = new MapSqlParameterSource();
-        params.addValue("id", issueId);
-        params.addValue("title", issue.getTitle());
-        params.addValue("type", issue.getType().toString());
-        params.addValue("description", issue.getDescription());
-        params.addValue("status", issue.getStatus().toString());
-        params.addValue("deadline", issue.getDeadline());
-
-        namedParameterJdbcTemplate.update(sql, params);
+    @ResponseBody
+    public void editIssue(
+        @Parameter(description = "ID of the issue to update")
+        @PathVariable Long issueId,
+        @RequestBody Issue issue
+    ) {
+        issueService.updateIssue(issueId, issue);
     }
 
+    @Operation(summary = "Delete issue", description = "Deletes an issue by its ID")
+    @ApiResponse(responseCode = "200", description = "Issue deleted successfully")
     @DeleteMapping("/delete/{issueId}")
-    public void deleteIssue(@PathVariable Integer issueId) {
-        String sql = "DELETE FROM issues WHERE id = :id";
-        namedParameterJdbcTemplate.update(sql, new MapSqlParameterSource("id", issueId));
+    @ResponseBody
+    public void deleteIssue(
+        @Parameter(description = "ID of the issue to delete")
+        @PathVariable Long issueId
+    ) {
+        issueService.deleteIssue(issueId);
     }
-
 }
